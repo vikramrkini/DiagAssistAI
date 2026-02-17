@@ -1,0 +1,22 @@
+# Node
+node_modules
+.next
+pnpm-lock.yaml
+
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+
+# Env
+.env
+.env.local
+
+# Build
+dist/
+build/
+coverage/
+
+# OS
+.DS_Store

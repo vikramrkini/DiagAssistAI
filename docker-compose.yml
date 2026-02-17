@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-diagassistai}
+      POSTGRES_USER: ${POSTGRES_USER:-diagassist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-diagassist}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-diagassist} -d ${POSTGRES_DB:-diagassistai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+      - ./data:/workspace/data
+      - ./scripts:/workspace/scripts
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  web:
+    build:
+      context: ./apps/web
+    env_file:
+      - .env
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - web_node_modules:/app/node_modules
+      - ./packages/shared:/packages/shared
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  postgres_data:
+  web_node_modules:

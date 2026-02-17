@@ -1,0 +1,54 @@
+{
+  "general": {
+    "name": "General",
+    "max_followups": 8,
+    "max_tests": 5,
+    "red_flag_focus": "airway, breathing, circulation compromise",
+    "differential_starters": ["Viral upper respiratory illness", "Bacterial pharyngitis"],
+    "followup_starters": [
+      "How high was the peak fever and for how many days?",
+      "Any shortness of breath at rest or chest pain?",
+      "Any recent sick contacts or travel?"
+    ],
+    "test_starters": ["Rapid antigen strep test", "CBC if worsening", "Pulse oximetry"]
+  },
+  "pediatrics": {
+    "name": "Pediatrics",
+    "max_followups": 8,
+    "max_tests": 4,
+    "red_flag_focus": "dehydration, lethargy, respiratory distress, poor oral intake",
+    "differential_starters": ["Viral syndrome", "Acute otitis media"],
+    "followup_starters": [
+      "How many wet diapers or urinations in the past 24 hours?",
+      "Any difficulty breathing, nasal flaring, or retractions?",
+      "Is the child drinking fluids and behaving normally?"
+    ],
+    "test_starters": ["Pulse oximetry", "Viral panel if severe", "Urinalysis if fever without source"]
+  },
+  "physiotherapy": {
+    "name": "Physiotherapy",
+    "max_followups": 7,
+    "max_tests": 3,
+    "red_flag_focus": "neurologic deficit, fracture risk, cauda equina symptoms",
+    "differential_starters": ["Mechanical musculoskeletal pain", "Soft tissue strain"],
+    "followup_starters": [
+      "What movement patterns worsen or relieve symptoms?",
+      "Any numbness, tingling, or progressive weakness?",
+      "Any trauma or fall preceding symptoms?"
+    ],
+    "test_starters": ["Focused neuro exam", "Range-of-motion assessment", "Imaging only if red flags present"]
+  },
+  "dermatology": {
+    "name": "Dermatology",
+    "max_followups": 8,
+    "max_tests": 4,
+    "red_flag_focus": "mucosal involvement, rapidly spreading rash, systemic symptoms",
+    "differential_starters": ["Contact dermatitis", "Atopic dermatitis flare"],
+    "followup_starters": [
+      "When did the rash start and how has it changed?",
+      "Any mucosal lesions, fever, or skin pain?",
+      "Any new products, medications, or exposures?"
+    ],
+    "test_starters": ["Skin scraping if fungal concern", "Patch testing (non-acute)", "Biopsy if atypical or persistent"]
+  }
+}

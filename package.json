@@ -1,0 +1,13 @@
+{
+  "name": "diagassistai",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "test:web": "pnpm --filter web test"
+  }
+}
