@@ -19,11 +19,11 @@ def deterministic_embedding(text: str, dim: int = EMBEDDING_DIM) -> list[float]:
 
 
 def embed_text(text: str) -> list[float]:
-    if settings.openai_api_key:
-        client = OpenAI(api_key=settings.openai_api_key)
-        resp = client.embeddings.create(model="text-embedding-3-small", input=text)
-        return resp.data[0].embedding
-    return deterministic_embedding(text)
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for embeddings generation.")
+    client = OpenAI(api_key=settings.openai_api_key)
+    resp = client.embeddings.create(model="text-embedding-3-small", input=text)
+    return resp.data[0].embedding
 
 
 def cosine_similarity(v1: list[float], v2: list[float]) -> float:

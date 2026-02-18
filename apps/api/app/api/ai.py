@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_clinician
@@ -21,7 +21,12 @@ async def transcribe_endpoint(
     text_override: str | None = Form(default=None),
     _: Clinician = Depends(get_current_clinician),
 ) -> TranscribeResponse:
-    transcript, mode = await transcribe(audio=audio, text_override=text_override)
+    try:
+        transcript, mode = await transcribe(audio=audio, text_override=text_override)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return TranscribeResponse(transcript=transcript, mode=mode)
 
 
@@ -51,12 +56,20 @@ def decision_support(
         }
         for r in retrieved
     ]
-    output = generate_decision_support(payload.transcript, payload.specialty, retrieved_payload)
+    try:
+        output = generate_decision_support(payload.transcript, payload.specialty, retrieved_payload)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Decision support generation failed via OpenAI API.",
+        ) from exc
 
     if payload.encounter_id:
         row = AIOutput(
             encounter_id=payload.encounter_id,
-            model_version="demo-v1",
+            model_version="openai-gpt-4.1-mini",
             specialty_used=payload.specialty,
             differential_json=[i.model_dump() for i in output.differential],
             red_flags_json=[i.model_dump() for i in output.red_flags],

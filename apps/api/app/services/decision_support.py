@@ -8,10 +8,6 @@ from app.schemas.ai import Citation, DecisionSupportOutput
 from app.services.specialty import specialty_store
 
 
-def _limit_items(items: list[dict], max_items: int) -> list[dict]:
-    return items[:max_items]
-
-
 def _enforce_citations(payload: dict[str, Any]) -> dict[str, Any]:
     fields = ["differential", "red_flags", "followups", "tests"]
     for field in fields:
@@ -27,51 +23,10 @@ def _enforce_citations(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def _demo_output(transcript: str, specialty: str, citation_ids: list[int], citations: list[Citation]) -> dict[str, Any]:
-    template = specialty_store.get(specialty)
-    diff_names = template["differential_starters"]
-    followups = template["followup_starters"]
-    tests = template["test_starters"]
-
-    def citation_or_empty(idx: int) -> list[int]:
-        return [citation_ids[idx]] if idx < len(citation_ids) else []
-
-    output = {
-        "differential": [
-            {
-                "name": diff_names[0],
-                "likelihood_bucket": "moderate",
-                "rationale": f"Based on transcript findings: {transcript[:120]}",
-                "citations": citation_or_empty(0),
-            },
-            {
-                "name": diff_names[1],
-                "likelihood_bucket": "low-moderate",
-                "rationale": "Needs targeted follow-up to rule in/out.",
-                "citations": citation_or_empty(1),
-            },
-        ],
-        "red_flags": [
-            {
-                "flag": template["red_flag_focus"],
-                "why": "Potential acute deterioration risk if present.",
-                "action": "Escalate to urgent in-person assessment when positive.",
-                "citations": citation_or_empty(0),
-            }
-        ],
-        "followups": [{"question": q, "why": "Reduce uncertainty.", "citations": citation_or_empty(i)} for i, q in enumerate(followups)],
-        "tests": [{"test": t, "why": "Clarify likely causes.", "citations": citation_or_empty(i)} for i, t in enumerate(tests)],
-        "confidence": 0.43,
-        "uncertainty_notes": "Needs human review; transcript context is limited.",
-        "needs_human_review": True,
-        "citations": [c.model_dump() for c in citations],
-    }
-    output["followups"] = _limit_items(output["followups"], template["max_followups"])
-    output["tests"] = _limit_items(output["tests"], template["max_tests"])
-    return _enforce_citations(output)
-
-
 def _openai_output(prompt: str, specialty: str, citations: list[Citation]) -> dict[str, Any]:
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for decision support generation.")
+
     client = OpenAI(api_key=settings.openai_api_key)
     template = specialty_store.get(specialty)
     schema_hint = {
@@ -110,20 +65,11 @@ def generate_decision_support(
         )
         for c in retrieved_chunks
     ]
-    citation_ids = [c.chunk_id for c in citations]
-
     prompt = {
         "transcript": transcript,
         "specialty": specialty,
         "evidence": [c.model_dump() for c in citations],
     }
 
-    if settings.openai_api_key:
-        try:
-            payload = _openai_output(json.dumps(prompt), specialty, citations)
-        except Exception:
-            payload = _demo_output(transcript, specialty, citation_ids, citations)
-    else:
-        payload = _demo_output(transcript, specialty, citation_ids, citations)
-
+    payload = _openai_output(json.dumps(prompt), specialty, citations)
     return DecisionSupportOutput.model_validate(payload)

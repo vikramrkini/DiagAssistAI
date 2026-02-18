@@ -8,7 +8,6 @@ class Settings(BaseSettings):
 
     app_name: str = "DiagAssistAI API"
     api_v1_prefix: str = ""
-    demo_mode: bool = True
     store_audio: bool = False
 
     database_url: str = "postgresql+psycopg://diagassist:diagassist@localhost:5432/diagassistai"

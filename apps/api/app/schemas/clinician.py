@@ -1,11 +1,13 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
+
+from app.schemas.email import AppEmail
 
 
 class ClinicianOut(BaseModel):
     id: int
-    email: EmailStr
+    email: AppEmail
     name: str
     specialty: str
     sub_specialty: str | None

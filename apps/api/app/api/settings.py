@@ -8,7 +8,6 @@ from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 _demo_store = {
-    "demo_mode": settings.demo_mode,
     "store_audio": settings.store_audio,
     "specialty_depth": {
         "general": "medium",
@@ -22,7 +21,6 @@ _demo_store = {
 @router.get("", response_model=AppSettingsOut)
 def get_settings(_: Clinician = Depends(get_current_clinician)) -> AppSettingsOut:
     return AppSettingsOut(
-        demo_mode=_demo_store["demo_mode"],
         store_audio=_demo_store["store_audio"],
         openai_key_configured=bool(settings.openai_api_key),
         specialty_depth=_demo_store["specialty_depth"],
@@ -34,7 +32,6 @@ def update_settings(payload: AppSettingsUpdate, _: Clinician = Depends(get_curre
     updates = payload.model_dump(exclude_none=True)
     _demo_store.update(updates)
     return AppSettingsOut(
-        demo_mode=_demo_store["demo_mode"],
         store_audio=_demo_store["store_audio"],
         openai_key_configured=bool(settings.openai_api_key),
         specialty_depth=_demo_store["specialty_depth"],

@@ -7,7 +7,16 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.append(str(ROOT / "apps" / "api"))
+
+# Resolve API package path for both local repo layout and Docker compose mounts.
+api_path_candidates = (ROOT / "apps" / "api", Path("/app"))
+for api_path in api_path_candidates:
+    if (api_path / "app").exists():
+        # Prepend so the project package wins over any third-party `app` package.
+        sys.path.insert(0, str(api_path))
+        break
+else:
+    raise RuntimeError("Could not locate API package path for seed script.")
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

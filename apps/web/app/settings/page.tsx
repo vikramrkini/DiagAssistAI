@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 interface AppSettings {
-  demo_mode: boolean;
   store_audio: boolean;
   openai_key_configured: boolean;
   specialty_depth: Record<string, string>;
@@ -23,7 +22,7 @@ export default function SettingsPage() {
     try {
       const updated = await apiFetch<AppSettings>("/settings", {
         method: "PUT",
-        body: JSON.stringify({ demo_mode: settings.demo_mode, store_audio: settings.store_audio, specialty_depth: settings.specialty_depth })
+        body: JSON.stringify({ store_audio: settings.store_audio, specialty_depth: settings.specialty_depth })
       });
       setSettings(updated);
       setMsg("Settings saved.");
@@ -37,15 +36,6 @@ export default function SettingsPage() {
   return (
     <div className="card">
       <h2>Settings</h2>
-      <label style={{ display: "block", marginBottom: "0.5rem" }}>
-        <input
-          type="checkbox"
-          checked={settings.demo_mode}
-          onChange={(e) => setSettings({ ...settings, demo_mode: e.target.checked })}
-          style={{ width: "auto", marginRight: "0.45rem" }}
-        />
-        Demo mode
-      </label>
       <label style={{ display: "block", marginBottom: "0.8rem" }}>
         <input
           type="checkbox"
@@ -53,7 +43,7 @@ export default function SettingsPage() {
           onChange={(e) => setSettings({ ...settings, store_audio: e.target.checked })}
           style={{ width: "auto", marginRight: "0.45rem" }}
         />
-        Store raw audio (demo only)
+        Store raw audio
       </label>
 
       <p>OpenAI key configured: {settings.openai_key_configured ? "yes" : "no"}</p>

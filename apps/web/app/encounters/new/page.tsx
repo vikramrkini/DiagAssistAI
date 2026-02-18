@@ -186,7 +186,7 @@ export default function NewEncounterPage() {
           </div>
 
           <label>
-            Transcript (paste text in demo mode)
+            Transcript (or provide text override)
             <textarea rows={6} value={transcript} onChange={(e) => setTranscript(e.target.value)} />
           </label>
 

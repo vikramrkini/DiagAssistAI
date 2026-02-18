@@ -63,7 +63,7 @@ flowchart LR
 - `GET /encounters/{id}/audit`
 
 4. AI pipeline
-- `POST /transcribe` (Whisper when key exists, deterministic fallback otherwise)
+- `POST /transcribe` (Whisper-based transcription via OpenAI)
 - `POST /extract-intake`
 - `POST /decision-support`
 - `GET /encounters/{id}/evidence`
@@ -138,16 +138,15 @@ Seeded demo users (password: `demo12345`):
 - `physio@demo.local`
 - `derm@demo.local`
 
-## Demo Mode and API Keys
+## API Keys and Runtime Behavior
 
 Environment variables:
-- `DEMO_MODE=true` (default behavior when keys are missing)
 - `STORE_AUDIO=false` (default; transcripts/structured output stored)
-- `OPENAI_API_KEY=` (optional)
+- `OPENAI_API_KEY=` (required for transcription, embeddings, and decision support)
 
 Behavior:
-- If `OPENAI_API_KEY` exists, transcription and LLM generation can use OpenAI.
-- If not, deterministic fallback paths are used so the demo remains runnable.
+- The AI pipeline uses OpenAI for transcription, embeddings, and decision-support generation.
+- If `OPENAI_API_KEY` is missing, these endpoints return explicit runtime errors.
 
 ## Evaluation Harness
 
@@ -191,7 +190,7 @@ GitHub Actions workflow:
 
 Jobs:
 - API tests
-- Eval harness in demo mode
+- Eval harness
 - Web build validation
 
 ## Notes
