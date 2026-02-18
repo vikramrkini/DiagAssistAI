@@ -1,6 +1,8 @@
 # Node
 node_modules
 .next
+.next-build
+.next-dev
 pnpm-lock.yaml
 
 # Python

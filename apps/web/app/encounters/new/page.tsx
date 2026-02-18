@@ -13,6 +13,7 @@ const emptyIntake: StructuredIntake = {
 };
 
 export default function NewEncounterPage() {
+  const defaultMeterBars = [10, 12, 14, 11, 9, 13, 15, 12, 10, 13, 11, 9];
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
   const [specialty, setSpecialty] = useState("general");
@@ -23,9 +24,62 @@ export default function NewEncounterPage() {
   const [diagnosis, setDiagnosis] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [meterBars, setMeterBars] = useState(defaultMeterBars);
+  const [meterLevel, setMeterLevel] = useState(0);
+  const [recordSeconds, setRecordSeconds] = useState(0);
   const [message, setMessage] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const meterFrameRef = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const recordStartedAtRef = useRef<number>(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+
+  function formatDuration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const rest = (seconds % 60).toString().padStart(2, "0");
+    return `${minutes}:${rest}`;
+  }
+
+  function stopMetering() {
+    if (meterFrameRef.current !== null) {
+      cancelAnimationFrame(meterFrameRef.current);
+      meterFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    setMeterBars(defaultMeterBars);
+    setMeterLevel(0);
+  }
+
+  function stopTimer() {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  function stopStreamTracks() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      stopMetering();
+      stopTimer();
+      stopStreamTracks();
+    };
+  }, []);
 
   useEffect(() => {
     apiFetch<Patient[]>("/patients")
@@ -40,6 +94,10 @@ export default function NewEncounterPage() {
 
   async function runTranscribe() {
     try {
+      if (audioFile && audioFile.size === 0) {
+        setMessage("Selected audio file is empty. Please record again.");
+        return;
+      }
       const fd = new FormData();
       if (audioFile) fd.append("audio", audioFile);
       if (!audioFile) fd.append("text_override", transcript);
@@ -49,7 +107,25 @@ export default function NewEncounterPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: fd
       });
-      if (!resp.ok) throw new Error(await resp.text());
+      if (!resp.ok) {
+        const raw = await resp.text();
+        let detail = raw || `Request failed (${resp.status})`;
+        try {
+          const parsed = JSON.parse(raw) as { detail?: string | Array<{ msg?: string } | string> };
+          if (typeof parsed.detail === "string") {
+            detail = parsed.detail;
+          } else if (Array.isArray(parsed.detail)) {
+            const joined = parsed.detail
+              .map((item) => (typeof item === "string" ? item : item.msg || ""))
+              .filter(Boolean)
+              .join(" | ");
+            if (joined) detail = joined;
+          }
+        } catch {
+          // Keep raw text fallback.
+        }
+        throw new Error(detail);
+      }
       const data = (await resp.json()) as { transcript: string; mode: string };
       setTranscript(data.transcript);
       setMessage(`Transcript ready (${data.mode}).`);
@@ -61,17 +137,78 @@ export default function NewEncounterPage() {
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      streamRef.current = stream;
+
+      const preferredType = "audio/webm;codecs=opus";
+      const recorder = MediaRecorder.isTypeSupported(preferredType)
+        ? new MediaRecorder(stream, { mimeType: preferredType })
+        : new MediaRecorder(stream);
       chunksRef.current = [];
+
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser.fftSize = 128;
+      source.connect(analyser);
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const barCount = defaultMeterBars.length;
+      const animateMeter = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const overallAverage = dataArray.reduce((sum, value) => sum + value, 0) / Math.max(1, dataArray.length);
+        const nextBars = Array.from({ length: barCount }, (_, idx) => {
+          const start = Math.floor((idx * dataArray.length) / barCount);
+          const end = Math.floor(((idx + 1) * dataArray.length) / barCount);
+          let total = 0;
+          for (let i = start; i < end; i++) total += dataArray[i];
+          const average = total / Math.max(1, end - start);
+          return 8 + Math.round((average / 255) * 34);
+        });
+        setMeterBars(nextBars);
+        const nextLevel = Math.min(1, overallAverage / 255);
+        setMeterLevel((previous) => previous * 0.6 + nextLevel * 0.4);
+        meterFrameRef.current = requestAnimationFrame(animateMeter);
+      };
+      meterFrameRef.current = requestAnimationFrame(animateMeter);
+
+      setRecordSeconds(0);
+      recordStartedAtRef.current = Date.now();
+      timerRef.current = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordStartedAtRef.current) / 1000);
+        setRecordSeconds(elapsed);
+      }, 250);
+
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        const file = new File([blob], `encounter-${Date.now()}.webm`, { type: "audio/webm" });
-        setAudioFile(file);
-        setMessage("Audio recording captured. You can now run Transcribe.");
+        const mimeType = recorder.mimeType || "audio/webm";
+        const extension = mimeType.includes("wav")
+          ? "wav"
+          : mimeType.includes("mp3") || mimeType.includes("mpeg")
+            ? "mp3"
+            : mimeType.includes("ogg") || mimeType.includes("oga")
+              ? "ogg"
+              : "webm";
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+
+        if (blob.size === 0) {
+          setAudioFile(null);
+          setMessage("Recording was empty. Please record again.");
+        } else {
+          const file = new File([blob], `encounter-${Date.now()}.${extension}`, { type: mimeType });
+          setAudioFile(file);
+          setMessage("Audio recording captured. You can now run Transcribe.");
+        }
+
+        stopMetering();
+        stopTimer();
+        stopStreamTracks();
       };
+
       recorder.start();
       recorderRef.current = recorder;
       setIsRecording(true);
@@ -184,6 +321,47 @@ export default function NewEncounterPage() {
             )}
             <span style={{ color: "#4c6674" }}>{audioFile ? `Selected audio: ${audioFile.name}` : "No audio selected"}</span>
           </div>
+          {isRecording && (
+            <div
+              className="recording-visualizer"
+              style={{ ["--meter-level" as string]: meterLevel.toFixed(3) }}
+              aria-live="polite"
+            >
+              <div className="recording-orb-stack" aria-hidden="true">
+                <span className="recording-ripple recording-ripple--one" />
+                <span className="recording-ripple recording-ripple--two" />
+                <span className="recording-ripple recording-ripple--three" />
+                <div className="recording-orb">
+                  <span className="recording-orb__core" />
+                </div>
+              </div>
+              <div className="recording-bars-wrap">
+                <div className="recording-bars" aria-hidden="true">
+                  {meterBars.map((value, idx) => (
+                    <span key={idx} style={{ height: `${value}px`, animationDelay: `${idx * 26}ms` }} />
+                  ))}
+                </div>
+                <div className="recording-meta">
+                  <p className="recording-label">Listening...</p>
+                  <p className="recording-time">{formatDuration(recordSeconds)}</p>
+                </div>
+              </div>
+              <p className="recording-hint">Speak naturally. Tap stop when done.</p>
+            </div>
+          )}
+          {!isRecording && audioFile && (
+            <div className="recording-visualizer recording-visualizer--idle" aria-live="polite">
+              <div className="recording-orb recording-orb--idle" aria-hidden="true">
+                <span className="recording-orb__core" />
+              </div>
+              <div className="recording-bars recording-bars--idle" aria-hidden="true">
+                {meterBars.map((value, idx) => (
+                  <span key={idx} style={{ height: `${Math.max(8, value - 2)}px` }} />
+                ))}
+              </div>
+              <p className="recording-label">Ready to transcribe</p>
+            </div>
+          )}
 
           <label>
             Transcript (or provide text override)

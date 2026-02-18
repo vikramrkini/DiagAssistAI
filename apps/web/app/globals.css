@@ -494,6 +494,138 @@ button.secondary {
   font-size: 0.92rem;
 }
 
+.recording-visualizer {
+  --meter-level: 0.15;
+  margin-top: 0.45rem;
+  border: 1px solid #d4e6f2;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f6fbff 0%, #eef8ff 55%, #ecfbf8 100%);
+  padding: 0.75rem 0.9rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.recording-visualizer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.5) 45%, transparent 100%);
+  transform: translateX(-120%);
+  animation: recording-shimmer 2.2s linear infinite;
+  pointer-events: none;
+}
+
+.recording-visualizer--idle::before {
+  display: none;
+}
+
+.recording-orb-stack {
+  width: 38px;
+  height: 38px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.recording-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 122, 168, 0.35);
+  animation: recording-ripple 1.7s ease-out infinite;
+}
+
+.recording-ripple--two {
+  animation-delay: 0.35s;
+}
+
+.recording-ripple--three {
+  animation-delay: 0.75s;
+}
+
+.recording-orb,
+.recording-orb--idle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #67d7f4, #0e7ea8 70%);
+  box-shadow: 0 0 0 0 rgba(15, 122, 168, 0.35);
+  animation: recording-pulse 1.2s ease-out infinite;
+  transform: scale(calc(1 + var(--meter-level) * 0.35));
+}
+
+.recording-orb__core {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.recording-orb--idle {
+  animation: none;
+  transform: scale(1);
+  box-shadow: none;
+  background: radial-gradient(circle at 35% 30%, #90d7ec, #2a8ab2 70%);
+}
+
+.recording-bars-wrap {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.recording-bars {
+  height: 36px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(4px, 1fr));
+  gap: 3px;
+  align-items: end;
+}
+
+.recording-bars span {
+  background: linear-gradient(180deg, #5ac8ee, #0f739c);
+  border-radius: 999px;
+  min-height: 6px;
+  transition: height 90ms linear;
+  animation: recording-bar-breathe 1.2s ease-in-out infinite;
+  box-shadow: 0 0 14px rgba(36, 146, 188, calc(var(--meter-level) * 0.4));
+}
+
+.recording-bars--idle span {
+  animation: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+.recording-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.recording-label,
+.recording-time {
+  color: #255b74;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+.recording-time {
+  font-variant-numeric: tabular-nums;
+  color: #0f739c;
+}
+
+.recording-hint {
+  color: #4c7287;
+  font-size: 0.78rem;
+}
+
 .fade-up {
   animation: fade-up 500ms ease both;
 }
@@ -530,6 +662,50 @@ button.secondary {
   }
 }
 
+@keyframes recording-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(15, 122, 168, 0.34);
+  }
+  70% {
+    transform: scale(1.07);
+    box-shadow: 0 0 0 12px rgba(15, 122, 168, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(15, 122, 168, 0);
+  }
+}
+
+@keyframes recording-ripple {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@keyframes recording-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes recording-bar-breathe {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 980px) {
   .app-header__frame {
     grid-template-columns: 1fr;
@@ -552,6 +728,16 @@ button.secondary {
 @media (max-width: 640px) {
   .app-shell {
     padding: 0.88rem 0.72rem 1.55rem;
+  }
+
+  .recording-visualizer {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .recording-meta {
+    justify-content: center;
   }
 
   .brand__tag {

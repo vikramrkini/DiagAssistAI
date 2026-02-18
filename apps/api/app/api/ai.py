@@ -27,6 +27,16 @@ async def transcribe_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except Exception as exc:
+        if getattr(exc, "status_code", None) == 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported or invalid audio file. Use wav, mp3, mp4, m4a, ogg, or webm.",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Audio transcription failed via OpenAI API.",
+        ) from exc
     return TranscribeResponse(transcript=transcript, mode=mode)
 
 
