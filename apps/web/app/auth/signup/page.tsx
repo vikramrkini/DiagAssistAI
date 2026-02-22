@@ -60,19 +60,51 @@ export default function SignUpPage() {
   }
 
   return (
-    <section className="auth-shell">
-      <article className="auth-story card fade-up">
-        <p className="eyebrow">Registration</p>
-        <h1>Create your clinician account.</h1>
-        <p>Set up your profile to access specialty-specific prompts, patient records, and encounter workflows.</p>
-        <ul>
-          <li>Role-based specialty context</li>
-          <li>Secure JWT-backed access</li>
-          <li>Structured documentation defaults</li>
-        </ul>
+    <section className="auth-shell auth-shell--signin fade-up">
+      <article className="auth-story auth-story--signin">
+        <div className="signin-hero__pattern" aria-hidden />
+        <div className="signin-topbar">
+          <span className="signin-topbar__brand">
+            <img src="/diagassist-logo.svg" alt="" />
+            DiagAssistAI
+          </span>
+          <div className="signin-topbar__links">
+            <span>Secure</span>
+            <span>Fast</span>
+            <span>Traceable</span>
+          </div>
+        </div>
+        <div className="signin-hero__content">
+          <p className="eyebrow">Registration</p>
+          <h1>Create your clinician account.</h1>
+          <p>Set up your profile to access specialty-specific prompts, patient records, and encounter workflows.</p>
+          <div className="signin-chip-row">
+            <span>Role-aware workflows</span>
+            <span>Secure access</span>
+            <span>Ready in minutes</span>
+          </div>
+        </div>
+
+        <div className="signin-hero__visual">
+          <div className="signin-orbital">
+            <span className="signin-orbital__ring" />
+            <span className="signin-orbital__ring signin-orbital__ring--two" />
+            <img src="/diagassist-logo.svg" alt="" className="signin-orbital__logo" />
+          </div>
+          <div className="signin-hero__stats">
+            <div className="signin-stat-card">
+              <strong>4 Specialties</strong>
+              <span>Guided onboarding choices</span>
+            </div>
+            <div className="signin-stat-card">
+              <strong>&lt; 1 min</strong>
+              <span>Account setup duration</span>
+            </div>
+          </div>
+        </div>
       </article>
 
-      <article className="auth-card card fade-up" style={{ animationDelay: "120ms" }}>
+      <article className="auth-card auth-card--signin fade-up" style={{ animationDelay: "120ms" }}>
         <h2>Register</h2>
         <p className="auth-card__subtle">Set up your clinician profile.</p>
         <form onSubmit={onSubmit} className="auth-form">

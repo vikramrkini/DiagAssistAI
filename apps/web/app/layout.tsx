@@ -10,13 +10,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppHeader />
 
         <main className="app-shell">
-          <div className="disclaimer">
-            <strong>Educational demo; not for real clinical use.</strong> Decision support only. Final diagnosis must be clinician-confirmed.
-          </div>
           {children}
-          <footer className="app-footer">
-            DiagAssistAI demo uses synthetic data only. All outputs require clinician confirmation.
-          </footer>
+          <footer className="app-footer">DiagAssistAI clinical decision support platform.</footer>
         </main>
       </body>
     </html>

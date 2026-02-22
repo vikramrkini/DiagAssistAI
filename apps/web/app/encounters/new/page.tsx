@@ -285,11 +285,11 @@ export default function NewEncounterPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
+    <div className="app-page">
       <div className="card">
         <h2>Encounter workspace</h2>
         <p>Needs human review is always true for decision-support outputs.</p>
-        <form onSubmit={saveEncounter} style={{ display: "grid", gap: "0.7rem" }}>
+        <form onSubmit={saveEncounter} className="app-stack">
           <label>
             Patient
             <select value={patientId ?? ""} onChange={(e) => setPatientId(Number(e.target.value))}>
@@ -313,13 +313,13 @@ export default function NewEncounterPage() {
             Audio input (optional)
             <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)} />
           </label>
-          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <div className="app-row">
             {!isRecording ? (
               <button type="button" className="secondary" onClick={startRecording}>Start recording</button>
             ) : (
               <button type="button" className="secondary" onClick={stopRecording}>Stop recording</button>
             )}
-            <span style={{ color: "#4c6674" }}>{audioFile ? `Selected audio: ${audioFile.name}` : "No audio selected"}</span>
+            <span className="app-muted">{audioFile ? `Selected audio: ${audioFile.name}` : "No audio selected"}</span>
           </div>
           {isRecording && (
             <div
@@ -368,7 +368,7 @@ export default function NewEncounterPage() {
             <textarea rows={6} value={transcript} onChange={(e) => setTranscript(e.target.value)} />
           </label>
 
-          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <div className="app-row">
             <button type="button" className="secondary" onClick={runTranscribe}>Transcribe</button>
             <button type="button" className="secondary" onClick={runExtract}>Extract intake</button>
             <button type="button" className="secondary" onClick={runDecisionSupport}>Generate decision support</button>
@@ -397,7 +397,7 @@ export default function NewEncounterPage() {
         <h3>Decision support</h3>
         {!decision && <p>No output yet.</p>}
         {decision && (
-          <div style={{ display: "grid", gap: "0.8rem" }}>
+          <div className="app-stack">
             <div><strong>Confidence:</strong> {decision.confidence.toFixed(2)}</div>
             <div><strong>Needs human review:</strong> {String(decision.needs_human_review)}</div>
             <div><strong>Uncertainty:</strong> {decision.uncertainty_notes}</div>
@@ -444,7 +444,7 @@ export default function NewEncounterPage() {
       <div className="card">
         <h3>Confirm final diagnosis</h3>
         <input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Clinician-confirmed final diagnosis" />
-        <div style={{ marginTop: "0.6rem" }}>
+        <div className="app-mt-sm">
           <button onClick={confirmDiagnosis}>Confirm final diagnosis</button>
         </div>
         {encounter && <p>Encounter ID: {encounter.id}. Final diagnosis: {encounter.final_diagnosis_text || "pending"}</p>}

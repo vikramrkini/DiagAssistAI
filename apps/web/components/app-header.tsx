@@ -13,7 +13,11 @@ const authedNav = [
   { href: "/settings", label: "Settings" }
 ];
 
-const guestNav = [{ href: "/auth/signup", label: "Register" }];
+const guestNav = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/auth/signup", label: "Register" }
+];
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -28,6 +32,35 @@ export function AppHeader() {
   }, []);
 
   const navItems = useMemo(() => (isAuthenticated ? authedNav : guestNav), [isAuthenticated]);
+  const isMarketingTheme = useMemo(
+    () =>
+      !isAuthenticated &&
+      (pathname === "/" ||
+        pathname.startsWith("/about") ||
+        pathname.startsWith("/auth/signin") ||
+        pathname.startsWith("/auth/signup")),
+    [isAuthenticated, pathname]
+  );
+  const isAppTheme = useMemo(
+    () =>
+      isAuthenticated &&
+      (pathname === "/" ||
+        pathname.startsWith("/clinician") ||
+        pathname.startsWith("/patients") ||
+        pathname.startsWith("/encounters") ||
+        pathname.startsWith("/settings")),
+    [isAuthenticated, pathname]
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("marketing-theme-active", isMarketingTheme);
+    document.body.classList.toggle("app-theme-active", isAppTheme);
+    return () => {
+      document.body.classList.remove("marketing-theme-active");
+      document.body.classList.remove("app-theme-active");
+    };
+  }, [isMarketingTheme, isAppTheme]);
 
   async function onLogout() {
     setIsLoggingOut(true);
@@ -37,22 +70,33 @@ export function AppHeader() {
     router.refresh();
   }
 
+  function isActive(href: string) {
+    if (href === "/") {
+      return pathname === "/";
+    }
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
   return (
-    <header className="app-header">
-      <div className="app-header__frame">
+    <header className={isMarketingTheme ? "app-header app-header--marketing" : isAppTheme ? "app-header app-header--app" : "app-header"}>
+      <div
+        className={
+          isMarketingTheme
+            ? "app-header__frame app-header__frame--marketing"
+            : isAppTheme
+              ? "app-header__frame app-header__frame--app"
+              : "app-header__frame"
+        }
+      >
         <Link href="/" className="brand">
-          <span className="brand__pulse" />
+          <img src="/diagassist-logo.svg" alt="DiagAssistAI logo" className="brand__logo" />
           <span className="brand__text">DiagAssistAI</span>
           <span className="brand__tag">Clinical Intelligence</span>
         </Link>
 
         <nav className="top-nav" aria-label="Primary">
           {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={pathname === item.href ? "top-nav__link is-active" : "top-nav__link"}
-            >
+            <Link key={item.href} href={item.href} className={isActive(item.href) ? "top-nav__link is-active" : "top-nav__link"}>
               {item.label}
             </Link>
           ))}

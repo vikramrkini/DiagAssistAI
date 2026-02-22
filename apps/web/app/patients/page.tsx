@@ -42,10 +42,10 @@ export default function PatientsPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
+    <div className="app-page">
       <div className="card">
         <h2>Patients</h2>
-        <form onSubmit={createPatient} style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "2fr 1fr 1fr auto" }}>
+        <form onSubmit={createPatient} className="app-patient-form">
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
           <input placeholder="Sex" value={sex} onChange={(e) => setSex(e.target.value)} />
@@ -55,10 +55,10 @@ export default function PatientsPage() {
       </div>
 
       <div className="card">
-        <ul style={{ display: "grid", gap: "0.4rem", paddingLeft: "1rem" }}>
+        <ul className="app-list">
           {patients.map((p) => (
             <li key={p.id}>
-              <Link href={`/patients/${p.id}`}>{p.name}</Link> <span style={{ color: "#617785" }}>({p.sex || "-"})</span>
+              <Link href={`/patients/${p.id}`}>{p.name}</Link> <span className="app-muted">({p.sex || "-"})</span>
             </li>
           ))}
         </ul>

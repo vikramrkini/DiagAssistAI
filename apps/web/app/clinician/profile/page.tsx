@@ -37,37 +37,39 @@ export default function ClinicianProfilePage() {
   if (!profile) return <div className="card">Loading...</div>;
 
   return (
-    <div className="card">
-      <h2>Clinician profile</h2>
-      <form onSubmit={save} style={{ display: "grid", gap: "0.7rem" }}>
-        <label>
-          Name
-          <input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
-        </label>
-        <label>
-          Email
-          <input value={profile.email} disabled />
-        </label>
-        <label>
-          Specialty
-          <select value={profile.specialty} onChange={(e) => setProfile({ ...profile, specialty: e.target.value as ClinicianProfile["specialty"] })}>
-            <option value="general">General</option>
-            <option value="pediatrics">Pediatrics</option>
-            <option value="physiotherapy">Physiotherapy</option>
-            <option value="dermatology">Dermatology</option>
-          </select>
-        </label>
-        <label>
-          Sub-specialty
-          <input value={profile.sub_specialty ?? ""} onChange={(e) => setProfile({ ...profile, sub_specialty: e.target.value })} />
-        </label>
-        <label>
-          Organization
-          <input value={profile.org ?? ""} onChange={(e) => setProfile({ ...profile, org: e.target.value })} />
-        </label>
-        <button type="submit">Save profile</button>
-      </form>
-      <p>{error}</p>
+    <div className="app-page app-page--narrow">
+      <div className="card">
+        <h2>Clinician profile</h2>
+        <form onSubmit={save} className="app-stack">
+          <label>
+            Name
+            <input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+          </label>
+          <label>
+            Email
+            <input value={profile.email} disabled />
+          </label>
+          <label>
+            Specialty
+            <select value={profile.specialty} onChange={(e) => setProfile({ ...profile, specialty: e.target.value as ClinicianProfile["specialty"] })}>
+              <option value="general">General</option>
+              <option value="pediatrics">Pediatrics</option>
+              <option value="physiotherapy">Physiotherapy</option>
+              <option value="dermatology">Dermatology</option>
+            </select>
+          </label>
+          <label>
+            Sub-specialty
+            <input value={profile.sub_specialty ?? ""} onChange={(e) => setProfile({ ...profile, sub_specialty: e.target.value })} />
+          </label>
+          <label>
+            Organization
+            <input value={profile.org ?? ""} onChange={(e) => setProfile({ ...profile, org: e.target.value })} />
+          </label>
+          <button type="submit">Save profile</button>
+        </form>
+        <p>{error}</p>
+      </div>
     </div>
   );
 }

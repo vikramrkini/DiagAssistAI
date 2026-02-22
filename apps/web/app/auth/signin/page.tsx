@@ -61,21 +61,16 @@ export default function SignInPage() {
   }
 
   return (
-    <section className="auth-shell">
-      <article className="auth-story card fade-up">
+    <section className="auth-shell auth-shell--signin auth-shell--signin-centered fade-up">
+      <article className="auth-card auth-card--signin auth-card--signin-centered fade-up" style={{ animationDelay: "120ms" }}>
         <p className="eyebrow">Secure Access</p>
-        <h1>Welcome back to your clinical workspace.</h1>
-        <p>Continue with your clinician account to review patients, run intake extraction, and issue final diagnoses.</p>
-        <ul>
-          <li>Human-review-first decision support</li>
-          <li>Evidence-linked differential outputs</li>
-          <li>Audit-ready encounter records</li>
-        </ul>
-      </article>
-
-      <article className="auth-card card fade-up" style={{ animationDelay: "120ms" }}>
+        <h1 className="auth-signin-title">Sign in to continue your clinical workflow.</h1>
+        <p className="auth-signin-copy">
+          Access structured intake summaries, evidence-linked differentials, and clinician-first review tools from one
+          secure workspace.
+        </p>
         <h2>Sign in</h2>
-        <p className="auth-card__subtle">Use your clinic credentials.</p>
+        <p className="auth-card__subtle">Use your clinician credentials.</p>
         <form onSubmit={onSubmit} className="auth-form">
           <label>
             Email
@@ -102,6 +97,9 @@ export default function SignInPage() {
           </button>
         </form>
         {message && <p className="auth-message">{message}</p>}
+        <p className="auth-signin-meta">
+          Need an account? Use Register from the top navigation and complete your clinician setup in under a minute.
+        </p>
         <p className="auth-card__subtle">
           New here? <Link href="/auth/signup">Create a clinician account</Link>
         </p>

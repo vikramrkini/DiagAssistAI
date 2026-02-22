@@ -24,6 +24,31 @@ const timelineItems = [
   { time: "10:31", label: "Red-flag action prompt acknowledged.", state: "warning" }
 ] as const;
 
+const storyModules = [
+  {
+    title: "Structured Intake That Starts Clean",
+    summary:
+      "Turn long intake conversations into clear, chart-ready summaries so clinicians begin each case with the right context and fewer manual rewrites.",
+    image: "https://images.pexels.com/photos/4226769/pexels-photo-4226769.jpeg?auto=compress&cs=tinysrgb&w=1800",
+    alt: "Clinician reviewing structured digital patient intake on a laptop"
+  },
+  {
+    title: "Evidence-Linked Differential Support",
+    summary:
+      "Get ranked differentials with traceable rationale and practical follow-up prompts, helping teams move faster while keeping decisions transparent.",
+    image: "https://images.pexels.com/photos/7088524/pexels-photo-7088524.jpeg?auto=compress&cs=tinysrgb&w=1800",
+    alt: "Healthcare team discussing clinical findings on screens",
+    reverse: true
+  },
+  {
+    title: "Action Plans Built For Real Workflows",
+    summary:
+      "Draft concise plans, next-step checks, and patient-facing guidance in a consistent format that is fast to verify and easy to communicate.",
+    image: "https://images.pexels.com/photos/1170979/pexels-photo-1170979.jpeg?auto=compress&cs=tinysrgb&w=1800",
+    alt: "Doctor explaining treatment plan to a patient"
+  }
+] as const;
+
 export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [clinicianName, setClinicianName] = useState("Clinician");
@@ -58,46 +83,58 @@ export default function HomePage() {
     () =>
       isAuthenticated
         ? `Live workspace tuned for ${specialty.toLowerCase()} workflows.`
-        : "Move from intake transcript to evidence-backed differential with transparent auditability.",
+        : "Move from intake transcript to evidence-backed differential with clear clinical traceability.",
     [isAuthenticated, specialty]
   );
 
   if (!isAuthenticated) {
     return (
-      <section className="hero card fade-up">
-        <div className="hero__content">
-          <p className="eyebrow">Clinical Decision Support</p>
-          <h1>Production-ready intake intelligence for modern care teams.</h1>
-          <p>{heroSubtitle}</p>
-          <div className="hero__actions">
-            <Link href="/auth/signin" className="button">
-              Sign in
-            </Link>
-            <Link href="/auth/signup" className="button button--ghost">
-              Create account
-            </Link>
+      <div className="marketing-page marketing-page--home fade-up">
+        <div className="marketing-page__overlay marketing-page__overlay--one" aria-hidden />
+        <div className="marketing-page__overlay marketing-page__overlay--two" aria-hidden />
+
+        <section className="marketing-hero marketing-hero--home">
+          <div className="marketing-hero__copy">
+            <p className="eyebrow">Clinical Decision Intelligence</p>
+            <h1>Production-ready workflow support for modern care teams.</h1>
+            <p>{heroSubtitle}</p>
           </div>
-        </div>
-        <div className="hero__metrics">
-          <div className="metric-card">
-            <strong>94%</strong>
-            <span>Structured intake completeness across eval fixtures</span>
+        </section>
+
+        <section className="marketing-section fade-up" style={{ animationDelay: "120ms" }}>
+          <div className="marketing-section__head">
+            <p className="eyebrow">How It Works</p>
+            <h2>One workflow, three high-impact modules.</h2>
           </div>
-          <div className="metric-card">
-            <strong>&lt; 3s</strong>
-            <span>Median decision-support generation latency</span>
+          <div className="marketing-story-list">
+            {storyModules.map((module, index) => (
+              <article
+                key={module.title}
+                className={module.reverse ? "marketing-story marketing-story--reverse stagger-card" : "marketing-story stagger-card"}
+                style={{ animationDelay: `${150 + index * 80}ms` }}
+              >
+                <div className="marketing-story__card">
+                  <h3>{module.title}</h3>
+                  <p>{module.summary}</p>
+                  <div className="hero__actions">
+                    <Link href="/about" className="button button--ghost">
+                      Learn More
+                    </Link>
+                  </div>
+                </div>
+                <div className="marketing-story__media">
+                  <img src={module.image} alt={module.alt} loading={index === 0 ? "eager" : "lazy"} />
+                </div>
+              </article>
+            ))}
           </div>
-          <div className="metric-card">
-            <strong>100%</strong>
-            <span>Synthetic-data-only training and evaluation flow</span>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     );
   }
 
   return (
-    <div className="dashboard">
+    <div className="app-page dashboard">
       <section className="dashboard-hero card fade-up">
         <div>
           <p className="eyebrow">Operations Dashboard</p>

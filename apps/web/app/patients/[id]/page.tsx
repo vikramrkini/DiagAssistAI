@@ -27,7 +27,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
   if (!patient) return <div className="card">Loading...</div>;
 
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
+    <div className="app-page">
       <div className="card">
         <h2>{patient.name}</h2>
         <p>DOB: {patient.dob || "Not set"}</p>
@@ -38,7 +38,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
       <div className="card">
         <h3>Encounter history</h3>
         {encounters.length === 0 && <p>No encounters yet.</p>}
-        <ul style={{ display: "grid", gap: "0.8rem", paddingLeft: "1rem" }}>
+        <ul className="app-list">
           {encounters.map((enc) => (
             <li key={enc.id}>
               <Link href={`/encounters/${enc.id}`}>Encounter #{enc.id}</Link>

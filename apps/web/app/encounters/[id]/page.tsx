@@ -46,7 +46,7 @@ export default function EncounterDetailPage({ params }: { params: { id: string }
   if (!encounter) return <div className="card">Loading...</div>;
 
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
+    <div className="app-page">
       <div className="card">
         <h2>Encounter #{encounter.id}</h2>
         <p><strong>Transcript:</strong> {encounter.transcript_text}</p>
@@ -55,11 +55,11 @@ export default function EncounterDetailPage({ params }: { params: { id: string }
       <div className="card">
         <h3>Evidence</h3>
         {evidence.length === 0 && <p>No evidence captured yet.</p>}
-        <ul style={{ display: "grid", gap: "0.8rem", paddingLeft: "1rem" }}>
+        <ul className="app-list">
           {evidence.map((item) => (
             <li key={item.chunk_id}>
               <strong>Chunk #{item.chunk_id}</strong> {item.title} ({item.source})
-              <div style={{ color: "#536b78" }}>Tags: {item.specialty_tags.join(", ")}</div>
+              <div className="app-muted">Tags: {item.specialty_tags.join(", ")}</div>
               <div>{item.chunk_text}</div>
             </li>
           ))}
@@ -68,7 +68,7 @@ export default function EncounterDetailPage({ params }: { params: { id: string }
       <div className="card">
         <h3>Audit</h3>
         {audit.length === 0 && <p>No audit events captured yet.</p>}
-        <ul style={{ display: "grid", gap: "0.8rem", paddingLeft: "1rem" }}>
+        <ul className="app-list">
           {audit.map((item) => (
             <li key={item.id}>
               <strong>{item.action}</strong> ({new Date(item.created_at).toLocaleString()})
