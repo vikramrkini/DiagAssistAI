@@ -28,5 +28,6 @@ class Clinician(Base):
     preferences_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+    memberships = relationship("OrganizationMembership", back_populates="clinician", cascade="all, delete-orphan")
     encounters = relationship("Encounter", back_populates="clinician", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="actor", cascade="all, delete-orphan")

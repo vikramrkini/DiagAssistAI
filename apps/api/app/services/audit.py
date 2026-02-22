@@ -5,6 +5,7 @@ from app.models.audit_log import AuditLog
 
 def log_action(
     db: Session,
+    organization_id: int,
     actor_clinician_id: int | None,
     entity_type: str,
     entity_id: int,
@@ -13,6 +14,7 @@ def log_action(
     after_json: dict | None,
 ) -> None:
     event = AuditLog(
+        organization_id=organization_id,
         actor_clinician_id=actor_clinician_id,
         entity_type=entity_type,
         entity_id=entity_id,

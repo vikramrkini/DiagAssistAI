@@ -28,7 +28,14 @@ function toErrorMessage(err: unknown): string {
 
 export default function SignUpPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "", name: "", specialty: "general" });
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    name: "",
+    specialty: "general",
+    account_type: "private_practice",
+    organization_name: ""
+  });
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,12 +49,24 @@ export default function SignUpPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (form.account_type === "hospital" && !form.organization_name.trim()) {
+      setMessage("For an organization account, provide the organization name.");
+      return;
+    }
     setIsSubmitting(true);
     setMessage("Creating account...");
     try {
+      const payload = {
+        email: form.email,
+        password: form.password,
+        name: form.name,
+        specialty: form.specialty,
+        account_type: form.account_type,
+        organization_name: form.organization_name.trim() || undefined
+      };
       const resp = await apiFetch<{ access_token: string }>("/auth/signup", {
         method: "POST",
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
       setToken(resp.access_token);
       router.push("/");
@@ -60,53 +79,15 @@ export default function SignUpPage() {
   }
 
   return (
-    <section className="auth-shell auth-shell--signin fade-up">
-      <article className="auth-story auth-story--signin">
-        <div className="signin-hero__pattern" aria-hidden />
-        <div className="signin-topbar">
-          <span className="signin-topbar__brand">
-            <img src="/diagassist-logo.svg" alt="" />
-            DiagAssistAI
-          </span>
-          <div className="signin-topbar__links">
-            <span>Secure</span>
-            <span>Fast</span>
-            <span>Traceable</span>
-          </div>
-        </div>
-        <div className="signin-hero__content">
-          <p className="eyebrow">Registration</p>
-          <h1>Create your clinician account.</h1>
-          <p>Set up your profile to access specialty-specific prompts, patient records, and encounter workflows.</p>
-          <div className="signin-chip-row">
-            <span>Role-aware workflows</span>
-            <span>Secure access</span>
-            <span>Ready in minutes</span>
-          </div>
-        </div>
-
-        <div className="signin-hero__visual">
-          <div className="signin-orbital">
-            <span className="signin-orbital__ring" />
-            <span className="signin-orbital__ring signin-orbital__ring--two" />
-            <img src="/diagassist-logo.svg" alt="" className="signin-orbital__logo" />
-          </div>
-          <div className="signin-hero__stats">
-            <div className="signin-stat-card">
-              <strong>4 Specialties</strong>
-              <span>Guided onboarding choices</span>
-            </div>
-            <div className="signin-stat-card">
-              <strong>&lt; 1 min</strong>
-              <span>Account setup duration</span>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <article className="auth-card auth-card--signin fade-up" style={{ animationDelay: "120ms" }}>
+    <section className="auth-shell auth-shell--signin auth-shell--signin-centered fade-up">
+      <article className="auth-card auth-card--signin auth-card--signin-centered fade-up" style={{ animationDelay: "120ms" }}>
+        <p className="eyebrow">Registration</p>
+        <h1 className="auth-signin-title">Create your account to continue.</h1>
+        <p className="auth-signin-copy">
+          Choose whether you are onboarding as an individual clinician or creating an organization account.
+        </p>
         <h2>Register</h2>
-        <p className="auth-card__subtle">Set up your clinician profile.</p>
+        <p className="auth-card__subtle">Set your account details below.</p>
         <form onSubmit={onSubmit} className="auth-form">
           <label>
             Name
@@ -140,6 +121,33 @@ export default function SignUpPage() {
             />
           </label>
           <label>
+            Account type
+            <select value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })}>
+              <option value="private_practice">Individual clinician account</option>
+              <option value="hospital">Organization account</option>
+            </select>
+          </label>
+          {form.account_type === "hospital" ? (
+            <label>
+              Organization name
+              <input
+                value={form.organization_name}
+                onChange={(e) => setForm({ ...form, organization_name: e.target.value })}
+                placeholder="Northside Medical Center"
+                required
+              />
+            </label>
+          ) : (
+            <label>
+              Practice name (optional)
+              <input
+                value={form.organization_name}
+                onChange={(e) => setForm({ ...form, organization_name: e.target.value })}
+                placeholder="Dr. Smith Practice"
+              />
+            </label>
+          )}
+          <label>
             Specialty
             <select value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })}>
               <option value="general">General</option>
@@ -153,6 +161,7 @@ export default function SignUpPage() {
           </button>
         </form>
         {message && <p className="auth-message">{message}</p>}
+        <p className="auth-signin-meta">You can update profile and organization details later from settings.</p>
         <p className="auth-card__subtle">
           Already registered? <Link href="/auth/signin">Sign in</Link>
         </p>

@@ -11,6 +11,7 @@ class PatientCreate(BaseModel):
 
 class PatientOut(BaseModel):
     id: int
+    organization_id: int
     name: str
     dob: date | None
     sex: str | None

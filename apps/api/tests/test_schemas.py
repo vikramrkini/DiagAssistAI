@@ -1,6 +1,7 @@
 from pydantic import ValidationError
 
 from app.schemas.ai import DecisionSupportOutput
+from app.schemas.auth import SignUpRequest
 
 
 def test_decision_support_schema_accepts_valid_payload() -> None:
@@ -35,3 +36,32 @@ def test_decision_support_confidence_bounds() -> None:
         assert False, "Expected validation error"
     except ValidationError:
         assert True
+
+
+def test_signup_schema_requires_hospital_details() -> None:
+    try:
+        SignUpRequest.model_validate(
+            {
+                "email": "demo@example.com",
+                "password": "strongpass",
+                "name": "Dr Demo",
+                "specialty": "general",
+                "account_type": "hospital",
+            }
+        )
+        assert False, "Expected validation error"
+    except ValidationError:
+        assert True
+
+
+def test_signup_schema_accepts_private_practice_defaults() -> None:
+    payload = SignUpRequest.model_validate(
+        {
+            "email": "solo@example.com",
+            "password": "strongpass",
+            "name": "Dr Solo",
+            "specialty": "general",
+            "account_type": "private_practice",
+        }
+    )
+    assert payload.account_type == "private_practice"

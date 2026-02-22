@@ -13,6 +13,7 @@ class EncounterCreate(BaseModel):
 
 class EncounterOut(BaseModel):
     id: int
+    organization_id: int
     clinician_id: int
     patient_id: int
     transcript_text: str

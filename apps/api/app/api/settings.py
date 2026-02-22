@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_current_clinician
+from app.api.deps import AuthContext, get_current_auth_context
 from app.core.config import settings
-from app.models.clinician import Clinician
 from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -19,7 +18,7 @@ _demo_store = {
 
 
 @router.get("", response_model=AppSettingsOut)
-def get_settings(_: Clinician = Depends(get_current_clinician)) -> AppSettingsOut:
+def get_settings(_: AuthContext = Depends(get_current_auth_context)) -> AppSettingsOut:
     return AppSettingsOut(
         store_audio=_demo_store["store_audio"],
         openai_key_configured=bool(settings.openai_api_key),
@@ -28,7 +27,7 @@ def get_settings(_: Clinician = Depends(get_current_clinician)) -> AppSettingsOu
 
 
 @router.put("", response_model=AppSettingsOut)
-def update_settings(payload: AppSettingsUpdate, _: Clinician = Depends(get_current_clinician)) -> AppSettingsOut:
+def update_settings(payload: AppSettingsUpdate, _: AuthContext = Depends(get_current_auth_context)) -> AppSettingsOut:
     updates = payload.model_dump(exclude_none=True)
     _demo_store.update(updates)
     return AppSettingsOut(

@@ -1,4 +1,6 @@
 export type Specialty = "general" | "pediatrics" | "physiotherapy" | "dermatology";
+export type AccountType = "private_practice" | "hospital";
+export type OrganizationType = "solo_practice" | "hospital";
 
 export interface ClinicianProfile {
   id: number;
@@ -7,12 +9,17 @@ export interface ClinicianProfile {
   specialty: Specialty;
   sub_specialty?: string | null;
   org?: string | null;
+  organization_id?: number;
+  organization_type?: OrganizationType;
+  role?: "owner" | "admin" | "clinician" | "staff" | "billing";
+  hospital_invite_code?: string | null;
   preferences_json: Record<string, unknown>;
   created_at: string;
 }
 
 export interface Patient {
   id: number;
+  organization_id?: number;
   name: string;
   dob?: string | null;
   sex?: string | null;
@@ -29,6 +36,7 @@ export interface StructuredIntake {
 
 export interface Encounter {
   id: number;
+  organization_id?: number;
   clinician_id: number;
   patient_id: number;
   transcript_text: string;

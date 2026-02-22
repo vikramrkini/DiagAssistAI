@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_clinician
+from app.api.deps import AuthContext, get_current_auth_context
 from app.db.session import get_db
-from app.models.clinician import Clinician
-from app.models.encounter import AIOutput
+from app.models.encounter import AIOutput, Encounter
 from app.schemas.ai import DecisionSupportRequest, DecisionSupportOutput, ExtractIntakeRequest, StructuredIntake, TranscribeResponse
 from app.services.audit import log_action
 from app.services.decision_support import generate_decision_support
@@ -19,7 +19,7 @@ router = APIRouter(tags=["ai"])
 async def transcribe_endpoint(
     audio: UploadFile | None = File(default=None),
     text_override: str | None = Form(default=None),
-    _: Clinician = Depends(get_current_clinician),
+    _: AuthContext = Depends(get_current_auth_context),
 ) -> TranscribeResponse:
     try:
         transcript, mode = await transcribe(audio=audio, text_override=text_override)
@@ -43,7 +43,7 @@ async def transcribe_endpoint(
 @router.post("/extract-intake", response_model=StructuredIntake)
 def extract_intake(
     payload: ExtractIntakeRequest,
-    _: Clinician = Depends(get_current_clinician),
+    _: AuthContext = Depends(get_current_auth_context),
 ) -> StructuredIntake:
     return extract_structured_intake(payload.transcript)
 
@@ -51,7 +51,7 @@ def extract_intake(
 @router.post("/decision-support", response_model=DecisionSupportOutput)
 def decision_support(
     payload: DecisionSupportRequest,
-    current: Clinician = Depends(get_current_clinician),
+    current: AuthContext = Depends(get_current_auth_context),
     db: Session = Depends(get_db),
 ) -> DecisionSupportOutput:
     query_text = f"{payload.transcript}\nSymptoms: {', '.join(payload.structured_intake.symptoms)}"
@@ -77,6 +77,15 @@ def decision_support(
         ) from exc
 
     if payload.encounter_id:
+        encounter = db.execute(
+            select(Encounter).where(
+                Encounter.id == payload.encounter_id,
+                Encounter.organization_id == current.organization.id,
+            )
+        ).scalar_one_or_none()
+        if not encounter:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encounter not found")
+
         row = AIOutput(
             encounter_id=payload.encounter_id,
             model_version="openai-gpt-4.1-mini",
@@ -93,7 +102,8 @@ def decision_support(
         db.flush()
         log_action(
             db,
-            actor_clinician_id=current.id,
+            organization_id=current.organization.id,
+            actor_clinician_id=current.clinician.id,
             entity_type="ai_output",
             entity_id=row.id,
             action="generate_decision_support",

@@ -16,10 +16,12 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(subject: str, clinician_id: int) -> str:
+def create_access_token(subject: str, clinician_id: int, organization_id: int | None = None) -> str:
     expires_delta = timedelta(minutes=settings.jwt_expires_minutes)
     expire = datetime.now(timezone.utc) + expires_delta
     payload = {"sub": subject, "clinician_id": clinician_id, "exp": expire}
+    if organization_id is not None:
+        payload["organization_id"] = organization_id
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

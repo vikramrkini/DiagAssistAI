@@ -98,7 +98,7 @@ export default function SignInPage() {
         </form>
         {message && <p className="auth-message">{message}</p>}
         <p className="auth-signin-meta">
-          Need an account? Use Register from the top navigation and complete your clinician setup in under a minute.
+          Need an account? Register as a private practice doctor or join a hospital team with an invite code.
         </p>
         <p className="auth-card__subtle">
           New here? <Link href="/auth/signup">Create a clinician account</Link>

@@ -2,9 +2,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import ai, auth, clinicians, encounters, patients, settings as settings_api
-from app.api.deps import get_current_clinician
+from app.api.deps import AuthContext, get_current_auth_context
 from app.core.config import settings
-from app.models.clinician import Clinician
 
 app = FastAPI(title="DiagAssistAI API", version="0.1.0")
 
@@ -40,10 +39,14 @@ def health() -> dict:
 
 
 @app.get("/me")
-def me(current: Clinician = Depends(get_current_clinician)) -> dict:
+def me(current: AuthContext = Depends(get_current_auth_context)) -> dict:
     return {
-        "id": current.id,
-        "email": current.email,
-        "name": current.name,
-        "specialty": current.specialty,
+        "id": current.clinician.id,
+        "email": current.clinician.email,
+        "name": current.clinician.name,
+        "specialty": current.clinician.specialty,
+        "organization_id": current.organization.id,
+        "organization_name": current.organization.name,
+        "organization_type": current.organization.org_type,
+        "role": current.membership.role,
     }

@@ -11,6 +11,7 @@ class Encounter(Base):
     __tablename__ = "encounters"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False)
     clinician_id: Mapped[int] = mapped_column(ForeignKey("clinicians.id", ondelete="CASCADE"), index=True, nullable=False)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"), index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -18,6 +19,7 @@ class Encounter(Base):
     structured_intake_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     final_diagnosis_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    organization = relationship("Organization", back_populates="encounters")
     clinician = relationship("Clinician", back_populates="encounters")
     patient = relationship("Patient", back_populates="encounters")
     ai_outputs = relationship("AIOutput", back_populates="encounter", cascade="all, delete-orphan")
