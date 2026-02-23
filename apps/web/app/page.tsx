@@ -135,7 +135,7 @@ export default function HomePage() {
 
   return (
     <div className="app-page dashboard">
-      <section className="dashboard-hero card fade-up">
+      <section className="dashboard-hero card dashboard-hero--modern fade-up">
         <div>
           <p className="eyebrow">Operations Dashboard</p>
           <h1>Welcome back, {clinicianName}.</h1>
@@ -166,7 +166,7 @@ export default function HomePage() {
       </section>
 
       <section className="dashboard-grid">
-        <article className="card fade-up" style={{ animationDelay: "120ms" }}>
+        <article className="card dashboard-panel dashboard-panel--queue fade-up" style={{ animationDelay: "120ms" }}>
           <h2>Priority Queue</h2>
           <ul className="queue-list">
             {queueItems.map((item) => (
@@ -181,7 +181,7 @@ export default function HomePage() {
           </ul>
         </article>
 
-        <article className="card fade-up" style={{ animationDelay: "200ms" }}>
+        <article className="card dashboard-panel dashboard-panel--timeline fade-up" style={{ animationDelay: "200ms" }}>
           <h2>System Timeline</h2>
           <ul className="timeline-list">
             {timelineItems.map((item) => (
