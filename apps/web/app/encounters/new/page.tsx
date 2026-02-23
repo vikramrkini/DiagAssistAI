@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { DecisionSupportOutput, Encounter, Patient, StructuredIntake } from "@diagassist/shared";
 import { apiFetch } from "@/lib/api";
 
@@ -13,7 +13,6 @@ const emptyIntake: StructuredIntake = {
 };
 
 export default function NewEncounterPage() {
-  const defaultMeterBars = [10, 12, 14, 11, 9, 13, 15, 12, 10, 13, 11, 9];
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
   const [specialty, setSpecialty] = useState("general");
@@ -22,12 +21,12 @@ export default function NewEncounterPage() {
   const [decision, setDecision] = useState<DecisionSupportOutput | null>(null);
   const [encounter, setEncounter] = useState<Encounter | null>(null);
   const [diagnosis, setDiagnosis] = useState("");
-  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [meterBars, setMeterBars] = useState(defaultMeterBars);
+  const [isAutoProcessing, setIsAutoProcessing] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const meterFrameRef = useRef<number | null>(null);
@@ -55,7 +54,6 @@ export default function NewEncounterPage() {
       audioContextRef.current = null;
     }
     analyserRef.current = null;
-    setMeterBars(defaultMeterBars);
     setMeterLevel(0);
   }
 
@@ -87,55 +85,93 @@ export default function NewEncounterPage() {
         setPatients(rows);
         if (rows.length > 0) setPatientId(rows[0].id);
       })
-      .catch((e) => setMessage((e as Error).message));
+      .catch((e) => handleError(e));
   }, []);
 
-  const intakeJson = useMemo(() => JSON.stringify(intake, null, 2), [intake]);
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 4800);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
-  async function runTranscribe() {
+  function toFriendlyErrorMessage(err: unknown): string {
+    const raw = err instanceof Error ? err.message : "Unable to complete this action.";
     try {
-      if (audioFile && audioFile.size === 0) {
-        setMessage("Selected audio file is empty. Please record again.");
-        return;
-      }
-      const fd = new FormData();
-      if (audioFile) fd.append("audio", audioFile);
-      if (!audioFile) fd.append("text_override", transcript);
-      const token = localStorage.getItem("diagassist_token");
-      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/transcribe`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: fd
-      });
-      if (!resp.ok) {
-        const raw = await resp.text();
-        let detail = raw || `Request failed (${resp.status})`;
-        try {
-          const parsed = JSON.parse(raw) as { detail?: string | Array<{ msg?: string } | string> };
-          if (typeof parsed.detail === "string") {
-            detail = parsed.detail;
-          } else if (Array.isArray(parsed.detail)) {
-            const joined = parsed.detail
-              .map((item) => (typeof item === "string" ? item : item.msg || ""))
-              .filter(Boolean)
-              .join(" | ");
-            if (joined) detail = joined;
-          }
-        } catch {
-          // Keep raw text fallback.
+      const parsed = JSON.parse(raw) as {
+        detail?: string | Array<{ msg?: string; type?: string; loc?: Array<string | number> } | string>;
+      };
+      if (typeof parsed.detail === "string") return parsed.detail;
+      if (Array.isArray(parsed.detail)) {
+        const shortTranscript = parsed.detail.find((item) => {
+          if (typeof item === "string") return false;
+          if (!item) return false;
+          const loc = Array.isArray(item.loc) ? item.loc.map(String) : [];
+          return item.type === "string_too_short" && loc.includes("transcript");
+        });
+        if (shortTranscript) {
+          return "Please record a longer statement so we can generate a useful transcript.";
         }
-        throw new Error(detail);
+        const joined = parsed.detail
+          .map((item) => (typeof item === "string" ? item : item.msg || ""))
+          .filter(Boolean)
+          .join(" | ");
+        if (joined) return joined;
       }
-      const data = (await resp.json()) as { transcript: string; mode: string };
-      setTranscript(data.transcript);
-      setMessage(`Transcript ready (${data.mode}).`);
-    } catch (e) {
-      setMessage((e as Error).message);
+      return raw;
+    } catch {
+      return raw;
     }
   }
 
+  function handleError(err: unknown) {
+    const friendly = toFriendlyErrorMessage(err);
+    setMessage(friendly);
+    setToast({ type: "error", text: friendly });
+  }
+
+  async function transcribeRecordedAudio(recordedFile: File): Promise<string> {
+    if (recordedFile.size === 0) {
+      throw new Error("Recorded audio is empty. Please record again.");
+    }
+    const fd = new FormData();
+    fd.append("audio", recordedFile);
+    const token = localStorage.getItem("diagassist_token");
+    const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/transcribe`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: fd
+    });
+    if (!resp.ok) {
+      const raw = await resp.text();
+      let detail = raw || `Request failed (${resp.status})`;
+      try {
+        const parsed = JSON.parse(raw) as { detail?: string | Array<{ msg?: string } | string> };
+        if (typeof parsed.detail === "string") {
+          detail = parsed.detail;
+        } else if (Array.isArray(parsed.detail)) {
+          const joined = parsed.detail
+            .map((item) => (typeof item === "string" ? item : item.msg || ""))
+            .filter(Boolean)
+            .join(" | ");
+          if (joined) detail = joined;
+        }
+      } catch {
+        // Keep raw text fallback.
+      }
+      throw new Error(detail);
+    }
+    const data = (await resp.json()) as { transcript: string };
+    return data.transcript;
+  }
+
   async function startRecording() {
+    if (isAutoProcessing) return;
     try {
+      setDecision(null);
+      setEncounter(null);
+      setIntake(emptyIntake);
+      setTranscript("");
+      setMessage("Recording in progress...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -154,20 +190,10 @@ export default function NewEncounterPage() {
       analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const barCount = defaultMeterBars.length;
       const animateMeter = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArray);
         const overallAverage = dataArray.reduce((sum, value) => sum + value, 0) / Math.max(1, dataArray.length);
-        const nextBars = Array.from({ length: barCount }, (_, idx) => {
-          const start = Math.floor((idx * dataArray.length) / barCount);
-          const end = Math.floor(((idx + 1) * dataArray.length) / barCount);
-          let total = 0;
-          for (let i = start; i < end; i++) total += dataArray[i];
-          const average = total / Math.max(1, end - start);
-          return 8 + Math.round((average / 255) * 34);
-        });
-        setMeterBars(nextBars);
         const nextLevel = Math.min(1, overallAverage / 255);
         setMeterLevel((previous) => previous * 0.6 + nextLevel * 0.4);
         meterFrameRef.current = requestAnimationFrame(animateMeter);
@@ -184,7 +210,7 @@ export default function NewEncounterPage() {
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const mimeType = recorder.mimeType || "audio/webm";
         const extension = mimeType.includes("wav")
           ? "wav"
@@ -196,12 +222,15 @@ export default function NewEncounterPage() {
         const blob = new Blob(chunksRef.current, { type: mimeType });
 
         if (blob.size === 0) {
-          setAudioFile(null);
           setMessage("Recording was empty. Please record again.");
+          setToast({ type: "error", text: "Recording was empty. Please record again." });
         } else {
           const file = new File([blob], `encounter-${Date.now()}.${extension}`, { type: mimeType });
-          setAudioFile(file);
-          setMessage("Audio recording captured. You can now run Transcribe.");
+          stopMetering();
+          stopTimer();
+          stopStreamTracks();
+          await runAutoPipeline(file);
+          return;
         }
 
         stopMetering();
@@ -213,7 +242,7 @@ export default function NewEncounterPage() {
       recorderRef.current = recorder;
       setIsRecording(true);
     } catch (e) {
-      setMessage((e as Error).message);
+      handleError(e);
     }
   }
 
@@ -223,29 +252,50 @@ export default function NewEncounterPage() {
     setIsRecording(false);
   }
 
-  async function runExtract() {
-    try {
-      const data = await apiFetch<StructuredIntake>("/extract-intake", {
-        method: "POST",
-        body: JSON.stringify({ transcript, specialty })
-      });
-      setIntake(data);
-      setMessage("Structured intake extracted.");
-    } catch (e) {
-      setMessage((e as Error).message);
-    }
+  async function runExtract(transcriptText: string) {
+    const data = await apiFetch<StructuredIntake>("/extract-intake", {
+      method: "POST",
+      body: JSON.stringify({ transcript: transcriptText, specialty })
+    });
+    setIntake(data);
+    return data;
   }
 
-  async function runDecisionSupport() {
+  async function runDecisionSupport(transcriptText: string, structuredIntake: StructuredIntake) {
+    const data = await apiFetch<DecisionSupportOutput>("/decision-support", {
+      method: "POST",
+      body: JSON.stringify({
+        transcript: transcriptText,
+        structured_intake: structuredIntake,
+        specialty,
+        encounter_id: encounter?.id ?? null
+      })
+    });
+    setDecision(data);
+    return data;
+  }
+
+  async function runAutoPipeline(recordedFile: File) {
+    setIsAutoProcessing(true);
     try {
-      const data = await apiFetch<DecisionSupportOutput>("/decision-support", {
-        method: "POST",
-        body: JSON.stringify({ transcript, structured_intake: intake, specialty, encounter_id: encounter?.id ?? null })
-      });
-      setDecision(data);
-      setMessage("Decision support generated.");
+      setMessage("Generating transcript...");
+      const nextTranscript = await transcribeRecordedAudio(recordedFile);
+      if (nextTranscript.trim().length < 5) {
+        throw new Error("Please record a longer statement so we can generate a useful transcript.");
+      }
+      setTranscript(nextTranscript);
+
+      setMessage("Extracting structured intake from transcript...");
+      const nextIntake = await runExtract(nextTranscript);
+
+      setMessage("Generating decision support...");
+      await runDecisionSupport(nextTranscript, nextIntake);
+      setMessage("Decision support generated automatically.");
+      setToast({ type: "success", text: "Decision support generated." });
     } catch (e) {
-      setMessage((e as Error).message);
+      handleError(e);
+    } finally {
+      setIsAutoProcessing(false);
     }
   }
 
@@ -262,8 +312,9 @@ export default function NewEncounterPage() {
       });
       setEncounter(data);
       setMessage(`Encounter #${data.id} saved.`);
+      setToast({ type: "success", text: `Encounter #${data.id} saved.` });
     } catch (e) {
-      setMessage((e as Error).message);
+      handleError(e);
     }
   }
 
@@ -279,16 +330,25 @@ export default function NewEncounterPage() {
       });
       setEncounter(data);
       setMessage("Final diagnosis confirmed and saved.");
+      setToast({ type: "success", text: "Final diagnosis confirmed and saved." });
     } catch (e) {
-      setMessage((e as Error).message);
+      handleError(e);
     }
   }
 
   return (
     <div className="app-page">
+      {toast && (
+        <div className={`app-toast app-toast--${toast.type}`} role="alert" aria-live="assertive">
+          <span>{toast.text}</span>
+          <button type="button" className="app-toast__close" onClick={() => setToast(null)} aria-label="Dismiss alert">
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="card">
         <h2>Encounter workspace</h2>
-        <p>Needs human review is always true for decision-support outputs.</p>
+        <p>Record an encounter and the system will auto-generate transcript, structured intake, and decision support.</p>
         <form onSubmit={saveEncounter} className="app-stack">
           <label>
             Patient
@@ -309,88 +369,42 @@ export default function NewEncounterPage() {
             </select>
           </label>
 
-          <label>
-            Audio input (optional)
-            <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)} />
-          </label>
-          <div className="app-row">
-            {!isRecording ? (
-              <button type="button" className="secondary" onClick={startRecording}>Start recording</button>
-            ) : (
-              <button type="button" className="secondary" onClick={stopRecording}>Stop recording</button>
-            )}
-            <span className="app-muted">{audioFile ? `Selected audio: ${audioFile.name}` : "No audio selected"}</span>
-          </div>
-          {isRecording && (
-            <div
-              className="recording-visualizer"
-              style={{ ["--meter-level" as string]: meterLevel.toFixed(3) }}
-              aria-live="polite"
+          <div className="encounter-recorder">
+            <button
+              type="button"
+              className={isRecording ? "mic-button mic-button--recording" : "mic-button"}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isAutoProcessing}
+              aria-label={isRecording ? "Stop recording" : "Start recording"}
             >
-              <div className="recording-orb-stack" aria-hidden="true">
-                <span className="recording-ripple recording-ripple--one" />
-                <span className="recording-ripple recording-ripple--two" />
-                <span className="recording-ripple recording-ripple--three" />
-                <div className="recording-orb">
-                  <span className="recording-orb__core" />
-                </div>
-              </div>
-              <div className="recording-bars-wrap">
-                <div className="recording-bars" aria-hidden="true">
-                  {meterBars.map((value, idx) => (
-                    <span key={idx} style={{ height: `${value}px`, animationDelay: `${idx * 26}ms` }} />
-                  ))}
-                </div>
-                <div className="recording-meta">
-                  <p className="recording-label">Listening...</p>
-                  <p className="recording-time">{formatDuration(recordSeconds)}</p>
-                </div>
-              </div>
-              <p className="recording-hint">Speak naturally. Tap stop when done.</p>
-            </div>
-          )}
-          {!isRecording && audioFile && (
-            <div className="recording-visualizer recording-visualizer--idle" aria-live="polite">
-              <div className="recording-orb recording-orb--idle" aria-hidden="true">
-                <span className="recording-orb__core" />
-              </div>
-              <div className="recording-bars recording-bars--idle" aria-hidden="true">
-                {meterBars.map((value, idx) => (
-                  <span key={idx} style={{ height: `${Math.max(8, value - 2)}px` }} />
-                ))}
-              </div>
-              <p className="recording-label">Ready to transcribe</p>
-            </div>
-          )}
+              <span className="mic-button__fill" style={{ height: `${Math.max(8, meterLevel * 100)}%` }} aria-hidden="true" />
+              <svg className="mic-button__icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.07A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 1 0 10 0Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+            <p className="recording-label">
+              {isAutoProcessing
+                ? "Processing recording..."
+                : isRecording
+                  ? "Tap to stop recording"
+                  : "Tap the microphone to start recording"}
+            </p>
+            <p className="recording-time">{formatDuration(recordSeconds)}</p>
+          </div>
 
           <label>
-            Transcript (or provide text override)
+            Transcript
             <textarea rows={6} value={transcript} onChange={(e) => setTranscript(e.target.value)} />
           </label>
 
           <div className="app-row">
-            <button type="button" className="secondary" onClick={runTranscribe}>Transcribe</button>
-            <button type="button" className="secondary" onClick={runExtract}>Extract intake</button>
-            <button type="button" className="secondary" onClick={runDecisionSupport}>Generate decision support</button>
-            <button type="submit">Save encounter</button>
+            <button type="submit" disabled={isAutoProcessing || !transcript}>Save encounter</button>
           </div>
         </form>
         <p>{message}</p>
-      </div>
-
-      <div className="card">
-        <h3>Structured intake (editable JSON)</h3>
-        <textarea
-          rows={14}
-          value={intakeJson}
-          onChange={(e) => {
-            try {
-              setIntake(JSON.parse(e.target.value));
-            } catch {
-              setMessage("Intake JSON is invalid.");
-            }
-          }}
-        />
       </div>
 
       <div className="card">
