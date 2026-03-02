@@ -63,6 +63,40 @@ export interface DecisionSupportOutput {
   citations: Citation[];
 }
 
+export interface DashboardKpis {
+  active_patients: number;
+  pending_confirmations: number;
+  high_priority_red_flags_24h: number;
+}
+
+export interface DashboardEncounterItem {
+  encounter_id: number;
+  patient_id: number;
+  patient_name: string;
+  created_at: string;
+  has_ai_output: boolean;
+  red_flag_count: number;
+  pending_confirmation: boolean;
+  final_diagnosis_text: string | null;
+}
+
+export interface DashboardTimelineItem {
+  id: number;
+  action: string;
+  entity_type: string;
+  entity_id: number;
+  created_at: string;
+  label: string;
+}
+
+export interface DashboardSummary {
+  kpis: DashboardKpis;
+  urgent_queue: DashboardEncounterItem[];
+  recent_encounters: DashboardEncounterItem[];
+  timeline: DashboardTimelineItem[];
+  generated_at: string;
+}
+
 export interface EvalCase {
   id: string;
   specialty: Specialty;

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { Patient } from "@diagassist/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { DashboardSummary } from "@diagassist/shared";
 import { apiFetch, getToken, subscribeToAuthChanges } from "@/lib/api";
 
 type MeResponse = {
@@ -11,18 +11,6 @@ type MeResponse = {
   name: string;
   specialty: string;
 };
-
-const queueItems = [
-  { title: "Pending confirmations", value: "06", note: "Diagnoses awaiting clinician sign-off." },
-  { title: "High-priority red flags", value: "02", note: "Escalations surfaced in last 24h." },
-  { title: "Documentation drift", value: "01", note: "Encounter missing final rationale." }
-];
-
-const timelineItems = [
-  { time: "09:24", label: "Intake extraction completed for pediatric visit.", state: "success" },
-  { time: "10:02", label: "Decision support generated with 4 citations.", state: "neutral" },
-  { time: "10:31", label: "Red-flag action prompt acknowledged.", state: "warning" }
-] as const;
 
 const storyModules = [
   {
@@ -53,7 +41,9 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [clinicianName, setClinicianName] = useState("Clinician");
   const [specialty, setSpecialty] = useState("General");
-  const [patientCount, setPatientCount] = useState<number | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   useEffect(() => {
     const syncAuthState = () => setIsAuthenticated(Boolean(getToken()));
@@ -61,9 +51,49 @@ export default function HomePage() {
     return subscribeToAuthChanges(syncAuthState);
   }, []);
 
+  function toFriendlyErrorMessage(err: unknown): string {
+    const raw = err instanceof Error ? err.message : "Unable to load dashboard data.";
+    try {
+      const parsed = JSON.parse(raw) as { detail?: string | Array<{ msg?: string } | string> | { msg?: string } };
+      if (typeof parsed.detail === "string") return parsed.detail;
+      if (Array.isArray(parsed.detail)) {
+        const joined = parsed.detail
+          .map((item) => (typeof item === "string" ? item : item.msg || ""))
+          .filter(Boolean)
+          .join(" | ");
+        if (joined) return joined;
+      }
+      if (parsed.detail && typeof parsed.detail === "object" && "msg" in parsed.detail) {
+        return parsed.detail.msg || raw;
+      }
+    } catch {
+      return raw;
+    }
+    return raw;
+  }
+
+  const loadDashboard = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!isAuthenticated) return;
+      const silent = opts?.silent ?? false;
+      if (!silent) setDashboardLoading(true);
+      setDashboardError(null);
+      try {
+        const data = await apiFetch<DashboardSummary>("/dashboard/summary");
+        setDashboardData(data);
+      } catch (err) {
+        setDashboardError(toFriendlyErrorMessage(err));
+      } finally {
+        if (!silent) setDashboardLoading(false);
+      }
+    },
+    [isAuthenticated]
+  );
+
   useEffect(() => {
     if (!isAuthenticated) {
-      setPatientCount(null);
+      setDashboardData(null);
+      setDashboardError(null);
       return;
     }
 
@@ -74,10 +104,8 @@ export default function HomePage() {
       })
       .catch(() => undefined);
 
-    apiFetch<Patient[]>("/patients")
-      .then((patients) => setPatientCount(patients.length))
-      .catch(() => setPatientCount(null));
-  }, [isAuthenticated]);
+    void loadDashboard();
+  }, [isAuthenticated, loadDashboard]);
 
   const heroSubtitle = useMemo(
     () =>
@@ -86,6 +114,18 @@ export default function HomePage() {
         : "Move from intake transcript to evidence-backed differential with clear clinical traceability.",
     [isAuthenticated, specialty]
   );
+
+  function formatRelativeTime(value: string): string {
+    const input = new Date(value).getTime();
+    if (Number.isNaN(input)) return "just now";
+    const diffMs = input - Date.now();
+    const absMs = Math.abs(diffMs);
+    const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+    if (absMs < 60_000) return rtf.format(Math.round(diffMs / 1000), "seconds");
+    if (absMs < 3_600_000) return rtf.format(Math.round(diffMs / 60_000), "minutes");
+    if (absMs < 86_400_000) return rtf.format(Math.round(diffMs / 3_600_000), "hours");
+    return rtf.format(Math.round(diffMs / 86_400_000), "days");
+  }
 
   if (!isAuthenticated) {
     return (
@@ -110,7 +150,7 @@ export default function HomePage() {
             {storyModules.map((module, index) => (
               <article
                 key={module.title}
-                className={module.reverse ? "marketing-story marketing-story--reverse stagger-card" : "marketing-story stagger-card"}
+                className={"reverse" in module && module.reverse ? "marketing-story marketing-story--reverse stagger-card" : "marketing-story stagger-card"}
                 style={{ animationDelay: `${150 + index * 80}ms` }}
               >
                 <div className="marketing-story__card">
@@ -147,53 +187,138 @@ export default function HomePage() {
             <Link href="/patients" className="button button--ghost">
               Review Patients
             </Link>
+            <button
+              type="button"
+              className="button button--ghost dashboard-refresh"
+              onClick={() => void loadDashboard()}
+              disabled={dashboardLoading}
+            >
+              {dashboardLoading ? "Refreshing..." : "Refresh"}
+            </button>
           </div>
+          {dashboardError && (
+            <div className="dashboard-error-banner">
+              <span>{dashboardError}</span>
+              <button type="button" onClick={() => void loadDashboard()}>
+                Retry
+              </button>
+            </div>
+          )}
         </div>
         <div className="dashboard-hero__stats">
           <div className="stat-tile">
             <span>Active Patients</span>
-            <strong>{patientCount === null ? "--" : patientCount}</strong>
+            {dashboardLoading && !dashboardData ? (
+              <span className="dashboard-kpi-skeleton" aria-hidden />
+            ) : (
+              <strong>{dashboardData ? dashboardData.kpis.active_patients : "--"}</strong>
+            )}
           </div>
           <div className="stat-tile">
-            <span>Clinical Specialty</span>
-            <strong>{specialty}</strong>
+            <span>Pending Confirmations</span>
+            {dashboardLoading && !dashboardData ? (
+              <span className="dashboard-kpi-skeleton" aria-hidden />
+            ) : (
+              <strong>{dashboardData ? dashboardData.kpis.pending_confirmations : "--"}</strong>
+            )}
           </div>
           <div className="stat-tile">
-            <span>Human Review Mode</span>
-            <strong>Enabled</strong>
+            <span>High-Priority Red Flags (24h)</span>
+            {dashboardLoading && !dashboardData ? (
+              <span className="dashboard-kpi-skeleton" aria-hidden />
+            ) : (
+              <strong>{dashboardData ? dashboardData.kpis.high_priority_red_flags_24h : "--"}</strong>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="dashboard-grid">
+      <section className="dashboard-grid dashboard-grid--triple">
         <article className="card dashboard-panel dashboard-panel--queue fade-up" style={{ animationDelay: "120ms" }}>
-          <h2>Priority Queue</h2>
-          <ul className="queue-list">
-            {queueItems.map((item) => (
-              <li key={item.title}>
-                <div>
-                  <p>{item.title}</p>
-                  <span>{item.note}</span>
-                </div>
-                <strong>{item.value}</strong>
-              </li>
-            ))}
-          </ul>
+          <h2>Urgent Queue</h2>
+          {dashboardLoading && !dashboardData ? (
+            <ul className="dashboard-queue-list">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <li key={idx} className="dashboard-skeleton-row" />
+              ))}
+            </ul>
+          ) : dashboardData && dashboardData.urgent_queue.length > 0 ? (
+            <ul className="dashboard-queue-list">
+              {dashboardData.urgent_queue.map((item) => (
+                <li key={item.encounter_id}>
+                  <Link href={`/encounters/${item.encounter_id}`} className="dashboard-row-link">
+                    <div>
+                      <p>{item.patient_name}</p>
+                      <span>Encounter #{item.encounter_id} · {formatRelativeTime(item.created_at)}</span>
+                    </div>
+                    <div className="dashboard-row-meta">
+                      <span className="status-chip status-chip--pending">Pending</span>
+                      {item.red_flag_count > 0 && <span className="red-flag-chip">{item.red_flag_count} red flags</span>}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="app-muted">No encounters waiting for confirmation.</p>
+          )}
         </article>
 
-        <article className="card dashboard-panel dashboard-panel--timeline fade-up" style={{ animationDelay: "200ms" }}>
+        <article className="card dashboard-panel dashboard-panel--recent fade-up" style={{ animationDelay: "170ms" }}>
+          <h2>Recent Encounters</h2>
+          {dashboardLoading && !dashboardData ? (
+            <ul className="recent-encounter-list">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <li key={idx} className="dashboard-skeleton-row" />
+              ))}
+            </ul>
+          ) : dashboardData && dashboardData.recent_encounters.length > 0 ? (
+            <ul className="recent-encounter-list">
+              {dashboardData.recent_encounters.map((item) => (
+                <li key={item.encounter_id}>
+                  <Link href={`/encounters/${item.encounter_id}`} className="dashboard-row-link">
+                    <div>
+                      <p>{item.patient_name}</p>
+                      <span>Encounter #{item.encounter_id} · {formatRelativeTime(item.created_at)}</span>
+                    </div>
+                    <div className="dashboard-row-meta">
+                      <span className={item.pending_confirmation ? "status-chip status-chip--pending" : "status-chip status-chip--confirmed"}>
+                        {item.pending_confirmation ? "Pending" : "Confirmed"}
+                      </span>
+                      {item.red_flag_count > 0 && <span className="red-flag-chip">{item.red_flag_count} red flags</span>}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="app-muted">No encounters yet. Start a new encounter.</p>
+          )}
+        </article>
+
+        <article className="card dashboard-panel dashboard-panel--timeline fade-up" style={{ animationDelay: "220ms" }}>
           <h2>System Timeline</h2>
-          <ul className="timeline-list">
-            {timelineItems.map((item) => (
-              <li key={`${item.time}-${item.label}`}>
-                <span className={`timeline-dot timeline-dot--${item.state}`} />
-                <div>
-                  <p>{item.label}</p>
-                  <span>{item.time}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {dashboardLoading && !dashboardData ? (
+            <ul className="timeline-list">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <li key={idx} className="dashboard-skeleton-row" />
+              ))}
+            </ul>
+          ) : dashboardData && dashboardData.timeline.length > 0 ? (
+            <ul className="timeline-list">
+              {dashboardData.timeline.map((item) => (
+                <li key={item.id}>
+                  <span className="timeline-dot timeline-dot--neutral" />
+                  <div>
+                    <p>{item.label}</p>
+                    <span>{formatRelativeTime(item.created_at)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="app-muted">No recent activity yet.</p>
+          )}
         </article>
       </section>
     </div>

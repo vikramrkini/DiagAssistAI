@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import ai, auth, clinicians, encounters, patients, settings as settings_api
+from app.api import ai, auth, clinicians, dashboard, encounters, patients, settings as settings_api
 from app.api.deps import AuthContext, get_current_auth_context
 from app.core.config import settings
 
@@ -21,6 +21,7 @@ app.include_router(clinicians.router)
 app.include_router(patients.router)
 app.include_router(encounters.router)
 app.include_router(ai.router)
+app.include_router(dashboard.router)
 app.include_router(settings_api.router)
 
 

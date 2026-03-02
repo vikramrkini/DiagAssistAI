@@ -50,7 +50,7 @@ export default function AboutPage() {
           {aboutStories.map((item, index) => (
             <article
               key={item.title}
-              className={item.reverse ? "marketing-story marketing-story--reverse stagger-card" : "marketing-story stagger-card"}
+              className={"reverse" in item && item.reverse ? "marketing-story marketing-story--reverse stagger-card" : "marketing-story stagger-card"}
               style={{ animationDelay: `${160 + index * 80}ms` }}
             >
               <div className="marketing-story__card">
